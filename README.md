@@ -9,7 +9,6 @@ Sistema de gestión de empleados, clientes, gerentes, proveedores y suministros,
 - MySQL 8.0.36
 - HTML, CSS, Bootstrap
 - SQLAlchemy ORM
-- Heroku (despliegue web)
 
 ## 🚀 Instalación local
 

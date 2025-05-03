@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cargos</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        /* Ajuste de anchos mínimos para las celdas */
+        table th, table td {
+            white-space: nowrap;
+        }
+
+        .table th, .table td {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        /* Ajuste de los inputs para que no se compriman demasiado */
+        .table input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand">Panel de Administración</a>
+            <a href="/logout" class="btn btn-danger">Cerrar Sesión</a>
+        </div>
+    </nav>
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+            <div class="col-md-8">
+                <h4 class="text-center">Cargos</h4>
+                <!-- Hacer la tabla responsive -->
+                <div class="table-responsive">
+                <table class="table table-striped text-center">
+                    <thead>
+                        <tr>
+                            <th style="width: 10%;">ID<br><input type="text" class="form-control form-control-sm" data-column="0" placeholder="Buscar..."></th>
+                            <th style="width: 30%;">Nombre del Cargo<br><input type="text" class="form-control form-control-sm" data-column="1" placeholder="Buscar..."></th>
+                            <th style="width: 30%;">Empleado<br><input type="text" class="form-control form-control-sm" data-column="2" placeholder="Buscar..."></th>
+                            <th style="width: 15%;">Creado por<br><input type="text" class="form-control form-control-sm" data-column="3" placeholder="Buscar..."></th>
+                            <th>Editar</th>
+                            <th>Eliminar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for position in positions %}
+                        <tr>
+                            <td>{{ position.position_id }}</td>
+                            <td>{{ position.name }}</td>
+                            <td>{{ position.employee_id }}</td>
+                            <td>{{ position.created_by }}</td>
+                            <td><a href="/edit_position/{{ position.position_id }}" class="btn btn-warning">Editar</a></td>
+                            <td><a href="/delete_position/{{ position.position_id }}" class="btn btn-danger">Eliminar</a></td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <a href="/menu/cargos" class="btn btn-secondary mt-3 w-100">Volver</a>
+                <button id="downloadCsv" class="btn btn-primary mt-3 w-100">Descargar CSV</button>
+            </div>
+        </div>
+    </div>
+    </div>
+</body>
+</html>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        const downloadButton = document.getElementById("downloadCsv");
+        downloadButton.addEventListener("click", function() {
+            let csvContent = '\uFEFF'; // BOM para que no se dañen tildes
+    
+            const table = document.querySelector("table");
+            const headers = Array.from(table.querySelectorAll("thead th"))
+                .filter((_, idx, arr) => idx < arr.length - 2) // Omitir 'Editar' y 'Eliminar'
+                .map(th => th.childNodes[0].textContent.trim())
+                .join(",");
+    
+            csvContent += headers + "\n";
+    
+            const rows = table.querySelectorAll("tbody tr");
+            let visibleRows = 0;
+    
+            rows.forEach(row => {
+                if (row.style.display !== "none") { // Solo filas visibles
+                    visibleRows++;
+                    const cells = Array.from(row.querySelectorAll("td"))
+                        .filter((_, idx, arr) => idx < arr.length - 2)
+                        .map(cell => `"${cell.textContent.trim().replace(/"/g, '""')}"`);
+                    csvContent += cells.join(",") + "\n";
+                }
+            });
+    
+            if (visibleRows === 0) {
+                alert("❌ No hay datos filtrados para descargar.");
+                return;
+            }
+    
+            // 🔥 AQUÍ: Pedimos nombre al usuario
+            let fileName = prompt("¿Cómo quieres llamar el archivo?", "cargos_filtrados");
+    
+            // Si cancela o deja vacío, no hacemos nada
+            if (!fileName) {
+                alert("⚠️ Nombre de archivo inválido. Cancelando descarga.");
+                return;
+            }
+    
+            // Si todo bien, generamos y descargamos
+            const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", fileName + ".csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        });
+    });
+</script>   
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Crear el campo de búsqueda
+        const searchInput = document.createElement("input");
+        searchInput.type = "text";
+        searchInput.placeholder = "Buscar...";
+        searchInput.className = "form-control mb-3";
+
+        // Insertar el campo de búsqueda antes de la tabla
+        const container = document.querySelector(".col-md-8"); // Cambiado a .col-md-8
+        const table = container.querySelector("table");
+        container.insertBefore(searchInput, table);
+
+        // Agregar el evento de búsqueda
+        searchInput.addEventListener("input", function() {
+            const filter = searchInput.value.toLowerCase();
+            const rows = document.querySelectorAll("tbody tr");
+            rows.forEach(row => {
+                const cells = row.querySelectorAll("td");
+                const match = Array.from(cells).some(cell => 
+                    cell.textContent.toLowerCase().includes(filter)
+                );
+                row.style.display = match ? "" : "none";
+            });
+        });
+    });
+</script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Filtrar por columnas individuales
+        const columnInputs = document.querySelectorAll("thead input[data-column]");
+        columnInputs.forEach(input => {
+            input.addEventListener("input", function() {
+                const columnIndex = parseInt(input.getAttribute("data-column"));
+                const filter = input.value.toLowerCase();
+                const rows = document.querySelectorAll("tbody tr");
+                rows.forEach(row => {
+                    const cell = row.querySelectorAll("td")[columnIndex];
+                    if (cell) {
+                        const match = cell.textContent.toLowerCase().includes(filter);
+                        row.style.display = match ? "" : "none";
+                    }
+                });
+            });
+        });
+    });
+</script>
+
+<style>
+    body {
+        background-color: #f2f4f8;
+        color: #212529;
+        animation: fadeIn 0.5s ease-in;
+        min-height: 100vh;
+    }
+
+    /* Navbar */
+    .navbar {
+        padding: 1rem 2rem;
+        animation: slideDown 0.6s ease-out;
+    }
+
+    .navbar-brand {
+        font-weight: bold;
+        font-size: 1.5rem;
+    }
+
+    /* Botones */
+    .btn {
+        font-weight: 500;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .btn:hover {
+        transform: scale(1.05);
+    }
+
+    /* Tarjetas, tablas, elementos blancos */
+    .card, .table, .bg-white {
+        border-radius: 12px;
+        box-shadow: 0 0.25rem 1rem rgba(0, 0, 0, 0.05);
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    /* Títulos */
+    h1, h2, h3, h4 {
+        font-weight: bold;
+        margin-bottom: 1rem;
+    }
+
+    /* Contenedor principal */
+    .container {
+        margin-top: 2rem;
+        animation: fadeInUp 0.7s ease-out;
+    }
+
+    /* Inputs en foco */
+    .form-control:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+    }
+
+    /* Encabezados de tabla */
+    .table th {
+        background-color: #e9ecef;
+    }
+
+    /* === ANIMACIONES PERSONALIZADAS === */
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* === Clases reutilizables === */
+    .fade-in {
+        animation: fadeIn 0.6s ease-in;
+    }
+
+    .fade-in-up {
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    .slide-down {
+        animation: slideDown 0.6s ease-out;
+    }
+
+    /* === RESPONSIVE AJUSTES === */
+    @media (max-width: 768px) {
+        .navbar {
+            padding: 0.8rem 1rem;
+            flex-direction: column;
+            text-align: center;
+        }
+
+        .navbar-brand {
+            font-size: 1.3rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .btn {
+            font-size: 0.9rem;
+            padding: 0.5rem 1rem;
+        }
+
+        .container {
+            margin-top: 1rem;
+            padding: 0 1rem;
+        }
+
+        h1, h2, h3, h4 {
+            font-size: 1.5rem;
+            text-align: center;
+        }
+
+        .card, .table, .bg-white {
+            box-shadow: 0 0.2rem 0.6rem rgba(0, 0, 0, 0.05);
+        }
+    }
+
+    @media (max-width: 576px) {
+        .navbar {
+            padding: 0.5rem 1rem;
+        }
+
+        .btn {
+            width: 100%;
+            margin-bottom: 0.5rem;
+        }
+
+        .container {
+            margin-top: 1rem;
+        }
+
+        .d-flex.justify-content-center {
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .col-md-6 {
+            width: 100%;
+        }
+    }
+
+</style>

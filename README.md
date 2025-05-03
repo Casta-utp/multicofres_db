@@ -16,6 +16,6 @@ Sistema de gestión de empleados, clientes, gerentes, proveedores y suministros,
 1. Clona el repositorio:
 
 ```bash
-git clone https://github.com/usuario/proyecto-multicofres.git
-cd proyecto-multicofres
+git clone https://github.com/Casta-utp/multicofres_db
+cd multicofres-app2 - copia
 
